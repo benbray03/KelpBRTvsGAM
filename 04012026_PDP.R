@@ -1,113 +1,93 @@
-# ============================================================
-# Partial Dependence Plot Comparison: BRT vs GAM
-# ============================================================
-
 library(tidyverse)
 library(mgcv)
-library(pdp)
 library(tidymodels)
 library(xgboost)
-library(vip)
 library(patchwork)
+set.seed(42)
 
 # ============================================================
 # 1. LOAD MODELS AND DATA
 # ============================================================
 
-# --- BRT ---
 brt_model <- readRDS("rds/giant_se_brt_deploy_poisson.rds")
-brt_fit   <- extract_fit_parsnip(brt_model)$fit  # xgb.Booster object
+brt_fit   <- extract_fit_parsnip(brt_model)$fit
 
-# Training data for BRT (used for rug plots and partial() train matrix)
-brt_data  <- read_csv("csv/brt_predictions/giant_se_future_predictions_300res_ci.csv")  # <-- update path if needed
+brt_data  <- read_csv("csv/brt_predictions/giant_se_future_predictions_300res_ci.csv") |>
+  mutate(site = as.character(site))
 
-# --- GAM ---
+
+brt_df_sample <- brt_data[sample(nrow(brt_data), 10000), ]
+
 gam_model <- readRDS("rds/giant_se_gam.rds")
-
-# Training data for GAM (used for prediction grid in GAM PDPs)
-# No year_factor or site columns expected — loaded as-is
-gam_data  <- read_csv("csv/gam_predictions/giant_se_future_predictions_300res_ci.csv")  # <-- update path if needed
+gam_data  <- read_csv("csv/gam_predictions/giant_se_future_predictions_300res_ci.csv")
 
 # ============================================================
-# 2. DEFINE SHARED VARIABLES TO COMPARE
+# 2. DEFINE SHARED FEATURES
 # ============================================================
 
-# --- BRT: extract feature names from xgb.Booster via importance table ---
 brt_imp      <- xgb.importance(model = brt_fit)
 brt_features <- brt_imp$Feature
-cat("BRT features:", paste(brt_features, collapse = ", "), "\n")
 
-# --- GAM: extract variable names from smooth terms ---
 gam_terms    <- as.character(attr(terms(gam_model$formula), "term.labels"))
 gam_features <- gam_terms |>
-  str_extract("(?<=s\\(|te\\(|ti\\()\\w+") |>   # handles s(), te(), ti()
+  str_extract("(?<=s\\(|te\\(|ti\\()\\w+") |>
   na.omit() |>
   as.character()
-cat("GAM features:", paste(gam_features, collapse = ", "), "\n")
 
-# --- Shared predictors ---
 shared_features <- intersect(brt_features, gam_features)
 cat("Shared features:", paste(shared_features, collapse = ", "), "\n")
 
-# Safety check
-if (length(shared_features) == 0) {
-  stop("No shared features found between BRT and GAM. Check feature names above.")
+if (length(shared_features) == 0) stop("No shared features found.")
+
+# ============================================================
+# 3. MANUAL PDP FUNCTION (full data, workflow-based)
+# ============================================================
+
+manual_pdp_workflow <- function(workflow, train_df, feat, grid.resolution = 50) {
+  grid_vals <- seq(min(train_df[[feat]], na.rm = TRUE),
+                   max(train_df[[feat]], na.rm = TRUE),
+                   length.out = grid.resolution)
+  
+  yhat_avg <- sapply(grid_vals, function(val) {
+    tmp <- train_df
+    tmp[[feat]] <- val
+    mean(predict(workflow, new_data = tmp)$.pred)
+  })
+  
+  data.frame(value = grid_vals, yhat = yhat_avg, feature = feat)
 }
 
 # ============================================================
-# 3. GENERATE PDP DATA FOR BRT (xgboost-compatible)
+# 4. BRT PDPs (full data)
 # ============================================================
-
-# xgb.Booster requires a numeric matrix for partial()
-brt_matrix <- as.matrix(brt_data[, brt_features])
 
 pdp_brt_list <- list()
 
-for (k in seq_along(shared_features)) {
-  feat <- shared_features[k]
-  
-  feat_range <- range(brt_data[[feat]], na.rm = TRUE)
-  grid_vals  <- seq(feat_range[1], feat_range[2], length.out = 50)
-  
-  pred_grid <- brt_data |>
-    summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE))) |>
-    slice(rep(1, 50)) |>
-    mutate(site = as.character(round(site)))  # match training type
-  
-  pred_grid[[feat]] <- grid_vals
-  
-  pred_vals <- predict(brt_model, new_data = pred_grid)$.pred
-  
-  df <- data.frame(
-    value   = grid_vals,
-    yhat    = pred_vals,
-    feature = feat,
-    model   = "BRT"
-  )
-  
-  pdp_brt_list[[k]] <- df
+for (feat in shared_features) {
+  cat("BRT PDP for:", feat, "\n")
+  df <- manual_pdp_workflow(brt_model, brt_df_sample, feat)
+  df$model <- "BRT"
+  pdp_brt_list[[feat]] <- df
 }
 
 pdp_brt_all <- bind_rows(pdp_brt_list)
+
 # ============================================================
-# 4. GENERATE PDP DATA FOR GAM
+# 5. GAM PDPs
 # ============================================================
 
 pdp_gam_list <- list()
 
-for (k in seq_along(shared_features)) {
-  feat <- shared_features[k]
+for (feat in shared_features) {
+  cat("GAM PDP for:", feat, "\n")
   
-  # Grid of values spanning the observed range of this predictor
   feat_range <- range(gam_data[[feat]], na.rm = TRUE)
   grid_vals  <- seq(feat_range[1], feat_range[2], length.out = 50)
   
-  # Prediction grid: all numeric predictors held at their mean
   pred_grid <- gam_data |>
     summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE))) |>
     slice(rep(1, 50))
   
-  # If any factor columns exist (e.g. site), use the most common level
   factor_cols <- names(gam_data)[sapply(gam_data, is.factor)]
   for (fc in factor_cols) {
     pred_grid[[fc]] <- factor(
@@ -116,67 +96,59 @@ for (k in seq_along(shared_features)) {
     )
   }
   
-  # Set the focal variable to the grid values
   pred_grid[[feat]] <- grid_vals
   
-  # Predict on the link scale; no random effects to exclude in this GAM
   pred_vals <- predict(gam_model,
                        newdata            = pred_grid,
                        type               = "link",
                        newdata.guaranteed = TRUE)
   
-  df <- data.frame(
+  pdp_gam_list[[feat]] <- data.frame(
     value   = grid_vals,
     yhat    = as.numeric(pred_vals),
     feature = feat,
     model   = "GAM"
   )
-  
-  pdp_gam_list[[k]] <- df
 }
 
 pdp_gam_all <- bind_rows(pdp_gam_list)
 
 # ============================================================
-# 5. COMBINE AND CENTER FOR COMPARISON
+# 6. COMBINE AND CENTER
 # ============================================================
 
-pdp_combined <- bind_rows(pdp_brt_all, pdp_gam_all)
-
-# Center each model's response per feature so shapes are directly comparable
-# (removes intercept differences between model types)
-pdp_combined <- pdp_combined |>
+pdp_combined <- bind_rows(pdp_brt_all, pdp_gam_all) |>
   group_by(feature, model) |>
   mutate(yhat_centered = yhat - mean(yhat)) |>
-  ungroup()
+  ungroup() |>
+  mutate(feature_label = factor(gsub("_", " ", feature),
+                                levels = gsub("_", " ", shared_features)))
 
 # ============================================================
-# 6. RUG DATA
+# 7. RUG DATA
 # ============================================================
 
 rug_data <- brt_data |>
   select(all_of(shared_features)) |>
-  pivot_longer(cols = everything(), names_to = "feature", values_to = "value")
+  pivot_longer(cols = everything(),
+               names_to  = "feature",
+               values_to = "value") |>
+  mutate(feature_label = factor(gsub("_", " ", feature),
+                                levels = gsub("_", " ", shared_features)))
 
 # ============================================================
-# 7. PLOT
+# 8. PLOT — OVERLAY
 # ============================================================
 
-# Clean up axis labels (replace underscores with spaces)
-pdp_combined <- pdp_combined |>
-  mutate(feature_label = gsub("_", " ", feature))
-
-rug_data <- rug_data |>
-  mutate(feature_label = gsub("_", " ", feature))
-
-# --- Option A: Overlaid lines (BRT and GAM on same panel per variable) ---
 p_overlay <- ggplot() +
-  geom_line(data     = pdp_combined,
+  geom_line(data = pdp_combined,
             aes(x = value, y = yhat_centered, color = model, linetype = model),
             linewidth = 1) +
-  geom_rug(data      = rug_data,
+  geom_rug(data = rug_data,
            aes(x = value),
-           sides      = "b", alpha = 0.15, inherit.aes = FALSE) +
+           sides = "b", alpha = 0.15, inherit.aes = FALSE) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             color = "gray50", linewidth = 0.4) +
   facet_wrap(~ feature_label, scales = "free_x", ncol = 3) +
   scale_color_brewer(palette = "Dark2") +
   labs(x        = "Predictor value",
@@ -184,48 +156,42 @@ p_overlay <- ggplot() +
        color    = "Model",
        linetype = "Model",
        title    = "Partial Dependence: BRT vs GAM — Giant Kelp SE") +
-  theme_classic() +
+  theme_classic(base_size = 12) +
   theme(legend.position  = "top",
         strip.background = element_blank(),
-        strip.text       = element_text(face = "bold"))
+        strip.text       = element_text(face = "bold"),
+        panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3))
 
 p_overlay
 
 ggsave("figures/giant_se_pdp_brt_vs_gam_overlay.png",
        plot = p_overlay, width = 10, height = 8, dpi = 300)
 
-# --- Option B: Side-by-side rows (model as facet row, variable as column) ---
+# ============================================================
+# 9. PLOT — FACETED
+# ============================================================
+
 p_facet <- ggplot() +
-  geom_line(data     = pdp_combined,
+  geom_line(data = pdp_combined,
             aes(x = value, y = yhat_centered, color = model),
             linewidth = 1) +
-  geom_rug(data      = rug_data,
+  geom_rug(data = rug_data,
            aes(x = value),
-           sides      = "b", alpha = 0.15, inherit.aes = FALSE) +
-  facet_grid(model ~ feature_label, scales = "free_x") +
+           sides = "b", alpha = 0.15, inherit.aes = FALSE) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             color = "gray50", linewidth = 0.4) +
+  facet_grid(model ~ feature_label, scales = "free") +
   scale_color_brewer(palette = "Dark2") +
   labs(x     = "Predictor value",
        y     = "Partial response (centered)",
        title = "Partial Dependence: BRT vs GAM — Giant Kelp SE") +
-  theme_classic() +
+  theme_classic(base_size = 12) +
   theme(legend.position  = "none",
         strip.background = element_blank(),
-        strip.text       = element_text(face = "bold"))
+        strip.text       = element_text(face = "bold"),
+        panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3))
 
 p_facet
 
 ggsave("figures/giant_se_pdp_brt_vs_gam_faceted.png",
        plot = p_facet, width = 14, height = 6, dpi = 300)
-
-# -----
-# testing
-# -----
-
-test_grid2 <- brt_data |>
-  summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE))) |>
-  slice(rep(1, 5)) |>
-  mutate(site = as.character(round(site)))  # convert to character to match training
-
-test_grid2$depth <- c(0, 5, 10, 20, 30)
-
-predict(brt_model, new_data = test_grid2)
