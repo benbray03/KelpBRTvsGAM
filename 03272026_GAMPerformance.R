@@ -2,6 +2,7 @@
 
 library(readr)
 library(ggplot2)
+library(dplyr)
 
 giant_ci_observed <- read_csv("csv/gams_training/macpyr_gams_training_historical_roms_0-30_5year.csv")
 gam_historical <- read_csv("csv/gam_predictions/giant_se_historical_predictions_300res_ci.csv")
