@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Large files
 csv/brt_predictions/future_for_kelp_projections_300res_poisson.rds
 csv/brt_predictions/giant_se_future_predictions_300res.csv
@@ -5,3 +6,11 @@ csv/brt_predictions/giant_se_future_predictions_300res_ci.csv
 csv/brt_predictions/giant_se_historical_predictions_300res.csv
 csv/brt_predictions/giant_se_historical_predictions_300res_ci.csv
 csv/gam_predictions/giant_se_future_predictions_300res_ci.csv
+=======
+*.csv
+*.rds
+.Rproj.user
+.Rhistory
+.RData
+rsconnect
+>>>>>>> 60e6406b1177dc6014fdc5fc2a72b7fe92fa7e34
