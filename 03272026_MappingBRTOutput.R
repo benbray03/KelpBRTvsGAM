@@ -1,6 +1,7 @@
 library(readr)
 library(ggplot2)
 library(tidyverse)
+library(sf)
 
 giant_ci_pred <- read_csv("csv/brt_predictions/giant_se_future_predictions_300res_ci.csv")
 
@@ -36,7 +37,8 @@ ggplot(giant_ci_pred_periods, aes(x = longitude, y = latitude, color = macpyr_lo
   facet_wrap(~ period, ncol = 2) +
   labs(title = "Mean predicted log kelp density by 25-year period (BRT)",
        color = "log kelp density") +
-  theme_minimal()
+  theme_minimal() +
+  coord_sf()
 
 ggsave(paste0(figure_folder, "/", species, "_future_predictions_map_periods_", model, ".png"), 
        width = 10, height = 8, dpi = 300)

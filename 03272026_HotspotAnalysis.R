@@ -1,5 +1,6 @@
 library(readr)
 library(ggplot2)
+library(dplyr)
 
 giant_ci_pred <- read_csv("csv/gam_predictions/giant_se_future_predictions_300res_ci.csv")
 
