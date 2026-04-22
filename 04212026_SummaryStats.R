@@ -81,7 +81,7 @@ signal_noise <- across_site_summary %>%
 
 print(signal_noise)
 
-
+# Within-site spread: faceted boxplot
 bind_rows(
   gam %>% mutate(model = "GAM"),
   brt %>% mutate(model = "BRT")
@@ -93,6 +93,8 @@ bind_rows(
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+# Across-site variation: point + error bar
 within_site_summary %>%
   ggplot(aes(x = reorder(site, mean), y = mean, color = model, group = model)) +
   geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd),
@@ -103,6 +105,7 @@ within_site_summary %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+# Signal-to-noise: CV per site as a heatmap
 within_site_summary %>%
   mutate(cv = abs(cv)) %>%  # abs in case of negative means
   ggplot(aes(x = model, y = reorder(site, cv), fill = cv)) +
@@ -113,6 +116,7 @@ within_site_summary %>%
        x = "Model", y = "Site", fill = "CV") +
   theme_minimal()
 
+# GAM vs BRT agreement: scatter with 1:1 line
 summary_df_wide %>%
   ggplot(aes(x = gam_mean, y = brt_mean, label = site)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray50") +
