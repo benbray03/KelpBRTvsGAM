@@ -22,7 +22,7 @@ formula_ci <- as.formula(macpyr_log ~
                            s(no3_deepest_summer, k = 4, bs = "cr") +
                            s(taualong_surface_upwelling, k = 4, bs = "cr") +
                            s(depth, k = 4, bs = "cr") +
-                           s(temp_deepest_upwelling, k = 4, bs = "cr") +
+                           s(temp_surface_upwelling, k = 4, bs = "cr") +
                            s(urchin_log, k = 4, bs = "cr")
 )
 

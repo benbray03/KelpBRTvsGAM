@@ -105,10 +105,51 @@ within_site_summary %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+within_site_summary %>%
+  mutate(cv = abs(cv)) %>%
+  ggplot(aes(x = model, y = cv, fill = model)) +
+  geom_boxplot(alpha = 0.8, outlier.size = 1.5) +
+  scale_fill_manual(values = c("GAM" = "steelblue", "BRT" = "firebrick")) +
+  labs(
+    x = "Model",
+    y = "Coefficient of Variation"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# =====================
+# T- test
+# =====================
+
+# Extract CV vectors for each model
+cv_gam <- within_site_summary %>%
+  filter(model == "GAM") %>%
+  mutate(cv = abs(cv)) %>%
+  pull(cv)
+
+cv_brt <- within_site_summary %>%
+  filter(model == "BRT") %>%
+  mutate(cv = abs(cv)) %>%
+  pull(cv)
+
+shapiro.test(cv_gam)
+shapiro.test(cv_brt)
+# BRT fails shapiro wilkes test, use Wilcox
+
+wilcox.test(cv_gam, cv_brt)
+
+library(rstatix)
+
+cv_df <- within_site_summary %>%
+  mutate(cv = abs(cv))
+
+wilcox_effsize(cv ~ model, data = cv_df)
+
+
 # Signal-to-noise: CV per site as a heatmap
 within_site_summary %>%
-  mutate(cv = abs(cv)) %>%  # abs in case of negative means
-  ggplot(aes(x = model, y = reorder(site, cv), fill = cv)) +
+  mutate(cv = abs(cv)) %>%
+  ggplot(aes(x = model, y = site, fill = cv)) +
   geom_tile(color = "white") +
   scale_fill_gradient2(low = "steelblue", mid = "lightyellow",
                        high = "firebrick", midpoint = median(abs(within_site_summary$cv))) +
@@ -116,12 +157,16 @@ within_site_summary %>%
        x = "Model", y = "Site", fill = "CV") +
   theme_minimal()
 
-# GAM vs BRT agreement: scatter with 1:1 line
+axis_range <- range(c(summary_df_wide$gam_mean, summary_df_wide$brt_mean), na.rm = TRUE)
+
 summary_df_wide %>%
-  ggplot(aes(x = gam_mean, y = brt_mean, label = site)) +
+  ggplot(aes(x = gam_mean, y = brt_mean, label = "")) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray50") +
   geom_point(size = 3, color = "steelblue") +
-  ggrepel::geom_text_repel(size = 3) +  # install.packages("ggrepel") if needed
-  labs(title = "GAM vs BRT Site-Level Mean Predictions",
+  ggrepel::geom_text_repel(size = 3) +
+  scale_x_continuous(limits = axis_range) +
+  scale_y_continuous(limits = axis_range) +
+  coord_fixed() +
+  labs(
        x = "GAM Mean Prediction (log)", y = "BRT Mean Prediction (log)") +
-  theme_minimal()
+  theme_bw()

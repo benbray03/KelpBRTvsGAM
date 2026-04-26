@@ -10,6 +10,7 @@ region <- "se"
 response <- "macpyr_log"
 figure_folder <- paste0("figures/brt/kelp_projections/", species, "_", region)
 model <- "brt"
+california <- st_read("shp/california.shp")
 
 # plot each of the points on a map
 ggplot(giant_ci_pred, aes(x = longitude, y = latitude, color = macpyr_log)) +
@@ -32,13 +33,19 @@ giant_ci_pred_periods <- giant_ci_pred |>
   mutate(period = factor(period, levels = c("2001-2025", "2026-2050", "2051-2075", "2076-2100")))
 
 ggplot(giant_ci_pred_periods, aes(x = longitude, y = latitude, color = macpyr_log)) +
+  geom_sf(data = california, fill = "gray80", color = "gray50", linewidth = 0.3, inherit.aes = FALSE) +
   geom_point(alpha = 0.5) +
-  scale_color_viridis_c() +
-  facet_wrap(~ period, ncol = 2) +
-  labs(title = "Mean predicted log kelp density by 25-year period (BRT)",
-       color = "log kelp density") +
+  scale_color_viridis_c(direction = -1) +
+  facet_wrap(~ period, ncol = 1) +
+  labs(x = "Longitude", y = "Latitude",
+       color = "Log Kelp Density") +
+  coord_sf(
+    xlim = range(giant_ci_pred_periods$longitude),
+    ylim = range(giant_ci_pred_periods$latitude)
+  ) +
   theme_minimal() +
-  coord_sf()
+  scale_x_continuous(breaks = seq(-120, -119.4, by = 0.2)) +
+  theme(legend.position = "left")
 
 ggsave(paste0(figure_folder, "/", species, "_future_predictions_map_periods_", model, ".png"), 
        width = 10, height = 8, dpi = 300)

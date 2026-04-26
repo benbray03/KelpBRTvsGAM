@@ -180,17 +180,21 @@ p_facet <- ggplot() +
            sides = "b", alpha = 0.15, inherit.aes = FALSE) +
   geom_hline(yintercept = 0, linetype = "dashed",
              color = "gray50", linewidth = 0.4) +
-  facet_grid(model ~ feature_label, scales = "free") +
+  facet_grid(model ~ feature_label, scales = "free",
+             labeller = label_wrap_gen(width = 15)) +  # wrap long titles
   scale_color_brewer(palette = "Dark2") +
+  scale_x_continuous(guide = guide_axis(angle = 45)) +  # angle x labels
   labs(x     = "Predictor value",
        y     = "Partial response (centered)",
        title = "Partial Dependence: BRT vs GAM — Giant Kelp SE") +
   theme_classic(base_size = 12) +
-  theme(legend.position  = "none",
-        strip.background = element_blank(),
-        strip.text       = element_text(face = "bold"),
-        panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3))
-
+  theme(legend.position    = "none",
+        strip.background   = element_blank(),
+        strip.text         = element_text(face = "bold", size = 9),  # smaller strip text
+        strip.text.x       = element_text(margin = margin(b = 5)),   # padding below title
+        panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3),
+        axis.text.x        = element_text(size = 7),   # smaller x axis text
+        panel.spacing.x    = unit(0.8, "cm"))           # more space between columns
 p_facet
 
 ggsave("figures/giant_se_pdp_brt_vs_gam_faceted.png",
