@@ -137,38 +137,7 @@ rug_data <- brt_data |>
                                 levels = gsub("_", " ", shared_features)))
 
 # ============================================================
-# 8. PLOT — OVERLAY
-# ============================================================
-
-p_overlay <- ggplot() +
-  geom_line(data = pdp_combined,
-            aes(x = value, y = yhat_centered, color = model, linetype = model),
-            linewidth = 1) +
-  geom_rug(data = rug_data,
-           aes(x = value),
-           sides = "b", alpha = 0.15, inherit.aes = FALSE) +
-  geom_hline(yintercept = 0, linetype = "dashed",
-             color = "gray50", linewidth = 0.4) +
-  facet_wrap(~ feature_label, scales = "free_x", ncol = 3) +
-  scale_color_brewer(palette = "Dark2") +
-  labs(x        = "Predictor value",
-       y        = "Partial response (centered)",
-       color    = "Model",
-       linetype = "Model",
-       title    = "Partial Dependence: BRT vs GAM — Giant Kelp SE") +
-  theme_classic(base_size = 12) +
-  theme(legend.position  = "top",
-        strip.background = element_blank(),
-        strip.text       = element_text(face = "bold"),
-        panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3))
-
-p_overlay
-
-ggsave("figures/giant_se_pdp_brt_vs_gam_overlay.png",
-       plot = p_overlay, width = 10, height = 8, dpi = 300)
-
-# ============================================================
-# 9. PLOT — FACETED
+# PLOT — FACETED
 # ============================================================
 
 p_facet <- ggplot() +
@@ -184,17 +153,16 @@ p_facet <- ggplot() +
              labeller = label_wrap_gen(width = 15)) +  # wrap long titles
   scale_color_brewer(palette = "Dark2") +
   scale_x_continuous(guide = guide_axis(angle = 45)) +  # angle x labels
-  labs(x     = "Predictor value",
-       y     = "Partial response (centered)",
-       title = "Partial Dependence: BRT vs GAM — Giant Kelp SE") +
+  labs(x     = "Predictor Value",
+       y     = "Partial Response") +
   theme_classic(base_size = 12) +
   theme(legend.position    = "none",
         strip.background   = element_blank(),
-        strip.text         = element_text(face = "bold", size = 9),  # smaller strip text
-        strip.text.x       = element_text(margin = margin(b = 5)),   # padding below title
+        strip.text         = element_text(face = "bold", size = 9),
+        strip.text.x       = element_text(margin = margin(b = 5)),
         panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3),
-        axis.text.x        = element_text(size = 7),   # smaller x axis text
-        panel.spacing.x    = unit(0.8, "cm"))           # more space between columns
+        axis.text.x        = element_text(size = 7),
+        panel.spacing.x    = unit(0.8, "cm"))
 p_facet
 
 ggsave("figures/giant_se_pdp_brt_vs_gam_faceted.png",

@@ -36,23 +36,25 @@ brt_esm_ensemble <- brt_ensemble %>%
 brt_plot_data <- bind_rows(brt_esm_ensemble, brt_ensemble) %>%
   mutate(model = factor(model, levels = c("ensemble", "gfdl", "hadl", "ipsl")))
 
+vlines <- c(2025, 2050, 2075)
+y_limits <- range(c(gam_esm_ensemble$annual_mean, brt_esm_ensemble$annual_mean))
+
 # GAM plot
-ggplot(gam_plot_data, aes(x = year, y = annual_mean, color = model)) +
-  geom_line(linewidth = 1) +
-  scale_color_brewer(palette = "Dark2") +
-  facet_wrap(~ model, nrow = 1) +
-  labs(x = "Year", y = "Mean predicted kelp density (log)",
-       color = "ESM", title = "GAM — Giant Kelp") +
+ggplot(gam_esm_ensemble, aes(x = year, y = annual_mean)) +
+  geom_vline(xintercept = vlines, linetype = "dashed", color = "gray50", linewidth = 0.5) +
+  geom_line(linewidth = 1, color = "#1f78b4") +
+  coord_cartesian(ylim = y_limits) +
+  labs(x = "Year", y = "Mean Predicted Kelp Density (log)",
+       title = "GAM — Giant Kelp (Ensemble)") +
   theme_classic()
-ggsave("figures/gam_giant_se_ensemble_ts.png", width = 10, height = 4, dpi = 300)
+ggsave("figures/gam_giant_se_ensemble_ts.png", width = 14, height = 4, dpi = 300)
 
 # BRT plot
-ggplot(brt_plot_data, aes(x = year, y = annual_mean, color = model)) +
-  geom_line(linewidth = 1) +
-  scale_color_brewer(palette = "Dark2") +
-  facet_wrap(~ model, nrow = 1) +
-  labs(x = "Year", y = "Mean predicted kelp density (log)",
-       color = "ESM", title = "BRT — Giant Kelp") +
-  theme_classic() + 
-  theme(legend.position = "none")
-ggsave("figures/brt_giant_se_ensemble_ts.png", width = 10, height = 4, dpi = 300)
+ggplot(brt_esm_ensemble, aes(x = year, y = annual_mean)) +
+  geom_vline(xintercept = vlines, linetype = "dashed", color = "gray50", linewidth = 0.5) +
+  geom_line(linewidth = 1, color = "#e66101") +
+  coord_cartesian(ylim = y_limits) +
+  labs(x = "Year", y = "Mean Predicted Kelp Density (log)",
+       title = "BRT — Giant Kelp (Ensemble)") +
+  theme_classic()
+ggsave("figures/brt_giant_se_ensemble_ts.png", width = 14, height = 4, dpi = 300)

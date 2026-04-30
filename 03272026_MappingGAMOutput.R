@@ -32,20 +32,21 @@ giant_ci_pred_periods <- giant_ci_pred |>
   summarise(macpyr_log = mean(macpyr_log, na.rm = TRUE)) |> 
   mutate(period = factor(period, levels = c("2001-2025", "2026-2050", "2051-2075", "2076-2100")))
 
-ggplot(giant_ci_pred_periods, aes(x = longitude, y = latitude, color = macpyr_log)) +
+gam <- ggplot(giant_ci_pred_periods, aes(x = longitude, y = latitude, color = macpyr_log)) +
   geom_sf(data = california, fill = "gray80", color = "gray50", linewidth = 0.3, inherit.aes = FALSE) +
   geom_point(alpha = 0.5) +
-  scale_color_viridis_c(direction = -1) +
-  facet_wrap(~ period, ncol = 1) +
+  scale_color_viridis_c(limits = c(0, 0.2781674), direction = 1, option = "turbo") +
+  facet_wrap(~ period, ncol = 4) +
   labs(x = "Longitude", y = "Latitude",
        color = "Log Kelp Density") +
   coord_sf(
     xlim = range(giant_ci_pred_periods$longitude),
-    ylim = range(giant_ci_pred_periods$latitude)
+    ylim = range(giant_ci_pred_periods$latitude),
+    expand = FALSE
   ) +
   scale_x_continuous(breaks = seq(-120, -119.4, by = 0.2)) +
   theme_minimal() +
-  theme(legend.position = "right")
+  theme(legend.position = "bottom", plot.margin = margin(0,5,5,5))
 
 ggsave(paste0(figure_folder, "/", species, "_future_predictions_map_periods_", model, ".png"), 
        width = 8, height = 14, dpi = 300)
