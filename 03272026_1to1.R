@@ -1,5 +1,6 @@
 library(ggplot2)
 library(readr)
+library(dplyr)
 
 brt_historical <- read_csv("csv/brt_predictions/giant_se_historical_predictions_300res_ci.csv")
 gam_historical <- read_csv("csv/gam_predictions/giant_se_historical_predictions_300res_ci.csv")

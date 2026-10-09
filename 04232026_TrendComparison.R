@@ -58,3 +58,20 @@ ggplot(brt_esm_ensemble, aes(x = year, y = annual_mean)) +
        title = "BRT — Giant Kelp (Ensemble)") +
   theme_classic()
 ggsave("figures/brt_giant_se_ensemble_ts.png", width = 14, height = 4, dpi = 300)
+
+combined_ensemble <- bind_rows(
+  gam_esm_ensemble %>% mutate(model = "GAM"),
+  brt_esm_ensemble %>% mutate(model = "BRT")
+)
+
+ggplot(combined_ensemble, aes(x = year, y = annual_mean, color = model)) +
+  geom_vline(xintercept = vlines, linetype = "dashed", color = "gray50", linewidth = 0.5) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(values = c("GAM" = "#e66101", "BRT" = "#458D67")) +
+  coord_cartesian(ylim = y_limits) +
+  labs(x = "Year", y = "Mean Predicted Kelp Density (log)",
+       title = "Giant Kelp — GAM vs. BRT (Ensemble)",
+       color = "Model") +
+  theme_classic()
+
+ggsave("figures/gam_brt_giant_se_ensemble_ts.png", width = 14, height = 4, dpi = 300)

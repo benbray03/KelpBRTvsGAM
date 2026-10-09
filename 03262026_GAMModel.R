@@ -58,19 +58,17 @@ ggplot(giant_ci_test, aes(x = macpyr_log, y = pred_gam)) +
        title = "GAM: Observed vs Predicted - Channel Islands") +
   theme_classic()
 
-# ---- Getting Manual VIP ----
-# Get deviance explained for full model
+# ---- Getting Manual VIP (deviance explained) ----
 full_dev <- summary(model_gam_ci)$dev.expl
 
-# Fit models with each variable dropped
-vars <- c("depth", "taucross_surface_upwelling", "no3_deepest_summer", 
-          "taualong_surface_upwelling", "temp_deepest_upwelling", "")
+vars <- c("taucross_surface_upwelling", "no3_deepest_summer",
+          "taualong_surface_upwelling", "depth",
+          "temp_surface_upwelling", "urchin_log")
 
 importance <- map_dfr(vars, function(v) {
   formula_drop <- as.formula(paste(
     "macpyr_log ~ ",
-    paste(paste0("s(", vars[vars != v], ", k = 4, bs = 'cr')"), collapse = " + "),
-    "+ s(year_factor, bs = 're') + s(latitude, longitude)"
+    paste(paste0("s(", vars[vars != v], ", k = 4, bs = 'cr')"), collapse = " + ")
   ))
   
   model_drop <- gam(formula_drop,
@@ -85,7 +83,10 @@ importance <- map_dfr(vars, function(v) {
   )
 })
 
-# Plot
+importance <- importance |> 
+  mutate(pct_of_total = 100 * importance / sum(importance)) |> 
+  arrange(desc(importance))
+
 ggplot(importance, aes(x = reorder(variable, importance), y = importance)) +
   geom_col(fill = "steelblue") +
   coord_flip() +
@@ -94,4 +95,5 @@ ggplot(importance, aes(x = reorder(variable, importance), y = importance)) +
        title = "GAM Variable Importance - Channel Islands") +
   theme_classic()
 
-
+ggsave("figures/gam_variable_importance_ci.png",
+       width = 7, height = 5, dpi = 300, bg = "white")

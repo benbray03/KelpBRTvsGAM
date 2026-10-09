@@ -1,5 +1,6 @@
 library(sf)
 library(ggplot2)
+library(dplyr)
 
 california <- st_read("shp/california.shp")
 
@@ -32,3 +33,4 @@ ggplot(map_df, aes(x = longitude, y = latitude, color = brt_higher)) +
   theme_minimal() +
   theme(legend.position = "none")
 
+length(unique(gam$latitude))

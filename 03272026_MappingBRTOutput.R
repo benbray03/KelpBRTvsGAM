@@ -4,7 +4,8 @@ library(tidyverse)
 library(sf)
 library(patchwork)
 
-giant_ci_pred <- read_csv("csv/brt_predictions/giant_se_future_predictions_300res_ci.csv")
+giant_ci_pred <- read_csv("csv/brt_predictions/giant_se_future_predictions_300res_ci.csv") %>%
+  filter(latitude < )
 
 species <- "giant"
 region <- "se"
@@ -52,7 +53,9 @@ brt <- ggplot(giant_ci_pred_periods, aes(x = longitude, y = latitude, color = ma
   theme(legend.position = "bottom", plot.margin = margin(5,5,0,5))
 
 
-brt / gam + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+(brt + ggtitle("BRT")) / (gam + ggtitle("GAM")) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
 
 ggsave("spatial_extent.png", 
        width = 14, height = 4, dpi = 300)

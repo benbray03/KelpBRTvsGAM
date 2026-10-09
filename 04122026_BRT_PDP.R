@@ -81,10 +81,10 @@ p_pdp <- ggplot() +
            sides = "b", alpha = 0.15, inherit.aes = FALSE) +
   geom_hline(yintercept = 0, linetype = "dashed",
              color = "gray50", linewidth = 0.4) +
-  facet_wrap(~ feature_label, scales = "free_x", ncol = 3) +
+  facet_wrap(~ feature_label, scales = "free_x", ncol = 6) +
   labs(x     = "Predictor value",
        y     = "Partial dependence (centered)",
-       title = "Partial Dependence — Giant Kelp SE (BRT)") +
+       title = "Partial Dependence — Giant Kelp (BRT)") +
   theme_classic(base_size = 12) +
   theme(strip.background    = element_blank(),
         strip.text          = element_text(face = "bold"),
@@ -92,5 +92,5 @@ p_pdp <- ggplot() +
 
 p_pdp
 
-ggsave("figures/giant_se_pdp_brt.png",
-       plot = p_pdp, width = 11, height = 8, dpi = 300)
+ggssave("figures/giant_se_pdp_brt.png",
+       plot = p_pdp, width = 16, height = 6, dpi = 300)
